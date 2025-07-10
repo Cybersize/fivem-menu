@@ -1840,9 +1840,6 @@ CreateThread(function()
                     local targetZ = foundGround and (groundZ + 1.0) or coords.z
 
                     stealthTeleport(coords.x, coords.y, targetZ, 2) -- you can change 2 to your desired random offset
-                    ShowNotification("Teleported stealthily to waypoint.")
-                else
-                    ShowNotification("~r~No waypoint set!")
                 end
             end
         end

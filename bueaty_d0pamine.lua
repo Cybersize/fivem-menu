@@ -585,7 +585,7 @@ local MenuSystem = {
         -- Weapons data (comprehensive weapon table from original)
         weaponsTable = {
             Melee = {
-                BaseballBat = { 
+                BaseballBat = {
                     id = 'weapon_bat', 
                     name = '~s~~s~Baseball Bat', 
                     bInfAmmo = false, 
@@ -1631,42 +1631,245 @@ function MenuSystem.processMenuInput()
 end
 
 -- =======================================
+--          MAIN FUNCTION CORE
+-- =======================================
+
+function setInvisible(enable)
+    local ped = PlayerPedId()
+    local playerId = PlayerId()
+    if enable then
+        -- Gradually fade out
+        for alpha = 255, 80, -35 do
+            SetEntityAlpha(ped, alpha, false)
+            Wait(10)
+        end
+        SetEntityAlpha(ped, 80, false) -- Not fully invisible; less suspicious
+        SetEntityVisible(ped, false, false)
+        SetPedCanBeTargetted(ped, false)
+        -- Don't disable collision instantly. Optionally: lower collision for 0.5s then restore
+        SetEntityCollision(ped, false, true)
+        Wait(500)
+        SetEntityCollision(ped, true, true)
+    else
+        -- Gradually fade in
+        for alpha = 80, 255, 35 do
+            SetEntityAlpha(ped, alpha, false)
+            Wait(10)
+        end
+        SetEntityAlpha(ped, 255, false)
+        SetEntityVisible(ped, true, false)
+        SetPedCanBeTargetted(ped, true)
+        SetEntityCollision(ped, true, true)
+    end
+end
+
+function stealthTeleport(x, y, z, addSign)
+    local ped = PlayerPedId()
+    local steps = 70 + math.random(0, 30)  -- Randomize step count for more human-like movement
+    local waitTime = 8 + math.random(0, 7) -- Randomize wait between steps
+
+    -- Add a small random offset to avoid AC pattern matches
+    if addSign and type(addSign) == "number" and addSign > 0 then
+        local function randomOffset()
+            return (math.random() * 2 - 1) * addSign
+        end
+        x = x + randomOffset()
+        y = y + randomOffset()
+        z = z + randomOffset()
+    end
+
+    local start = GetEntityCoords(ped)
+
+    for i = 1, steps do
+        local t = i / steps
+        -- Use smoothstep for more natural interpolation
+        t = t * t * (3 - 2 * t)
+        local nx = start.x + (x - start.x) * t
+        local ny = start.y + (y - start.y) * t
+        local nz = start.z + (z - start.z) * t
+
+        SetEntityCoordsNoOffset(ped, nx, ny, nz, true, true, true)
+        Wait(waitTime)
+    end
+
+    print(string.format("[Stealth TP] Arrived at: %.2f, %.2f, %.2f", x, y, z))
+end
+
+-- =======================================
 -- SCRIPT INITIALIZATION
 -- =======================================
+
+do
+    local totalExploitablesTable = {}
+
+    local veriScaryAntiCheats = {
+        'anticheat','esx_anticheat','alphaveta','dfwm','fzac','anticheese','NSAC','avac','WaveShield',
+        'ChocoHax','Chocohax','jambonbeurre','anticheese-anticheat-master','anticheese-anticheat',
+        'FiveM-AntiCheat-Fixed-master','FiveM-AntiCheat-Fixed','TigoAntiCheat-master','TigoAntiCheat',
+        'Badger-Anticheat','Badger_Discord_API','Badger_Discord_PIA','screenshot-basic', 'bt_defender',
+        'bt_defender-master', 'bt_attack', 'nc_protect', 'NC_PROTECT+'
+    }
+
+    local exploitablesDrugs = {
+        'esx_drugs','esx_illegal_drugs'
+    }
+
+    local exploitablesMoneyMaker = {
+        'esx_vangelico_robbery','esx_vangelico','esx_burglary','99kr-burglary','esx_minerjob','esx_mining','esx_miner',
+        'esx_fishing','james_fishing','loffe-fishing','esx_mugging','loffe_robbery','esx_prisonwork','loffe_prisonwork',
+        'esx_robnpc','MF_DrugSales','MF_drugsales','ESX_DrugSales','lenzh_chopshop','esx_chopshop','ESX_Deliveries',
+        'ESX_Cargodelivery','napadtransport','Napad_transport_z_gotowka','esx_truck_robbery','napadnakase',
+        'Napad_na_kase','utk_oh','utk_ornateheist','aurora_principalbank','esx_hunting','esx_qalle_hunting',
+        'esx-qalle-hunting','esx_taxijob','esx_taxi','esx_carthiefjob','esx_carthief','esx_rangerjob','esx_ranger',
+        'esx_godirtyjob','esx_godirty','esx_banksecurityjob','esx_banksecurity','esx_pilotjob','esx_pilot',
+        'esx_pizzajob','esx_pizza','esx_gopostaljob','esx_gopostal','esx_garbagejob','esx_garbage',
+        'esx_truckerjob','esx_trucker'
+    }
+
+    local totalAnticheats = 0
+    local totalExploitableMoneyMaker = 0
+    local totalExploitableDrugs = 0
+
+    for i = 1, #exploitablesMoneyMaker do
+        if MenuSystem.functions.doesResourceExist(exploitablesMoneyMaker[i]) then
+            table.insert(totalExploitablesTable, exploitablesMoneyMaker[i])
+            totalExploitableMoneyMaker = totalExploitableMoneyMaker + 1
+        end
+    end
+
+    for i = 1, #exploitablesDrugs do
+        if MenuSystem.functions.doesResourceExist(exploitablesDrugs[i]) then
+            table.insert(totalExploitablesTable, exploitablesDrugs[i])
+            totalExploitableDrugs = totalExploitableDrugs + 1
+        end
+    end
+
+    for i = 1, #veriScaryAntiCheats do
+        if MenuSystem.functions.doesResourceExist(veriScaryAntiCheats[i]) then
+            table.insert(totalExploitablesTable, veriScaryAntiCheats[i])
+            totalAnticheats = totalAnticheats + 1
+        end
+    end
+
+    dir_print("^2=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-")
+    dir_print("Search for exploits in progress..")
+    dir_print('Anticheats: ' .. totalAnticheats)
+    dir_print('Moneymaker: ' .. totalExploitableMoneyMaker)
+    dir_print('Drugs: ' .. totalExploitableDrugs)
+    dir_print('Exploit/Anticheat Logs: ' .. json.encode(totalExploitablesTable))
+end
 
 -- Main script thread
 CreateThread(function()
     while MenuSystem.shouldShowMenu do
         Wait(0)
-        
-        -- Process menu input
         MenuSystem.processMenuInput()
-        
-        -- Reset option count for next frame
         MenuSystem.menuProps.optionCount = 0
-        
-        -- Example menu creation (you can remove this and add your own menus)
+
         if not MenuSystem.menuProps.subMenus['main'] then
             MenuSystem.createMenu('main', 'D0pamine Menu', 'Main Menu', nil, nil)
+
+            MenuSystem.createMenu('player', 'Player Option', 'Player Actions', nil, 'main')
+            MenuSystem.createMenu('world', 'World Option', 'World Actions', nil, 'main')
+            MenuSystem.createMenu('weapon', 'Weapon Option', 'Weapon Actions', nil, 'main')
+            MenuSystem.createMenu('vehicle', 'Vehicle Option', 'Vehicle Actions', nil, 'main')
+            MenuSystem.createMenu('teleport', 'Teleport Option', 'Teleport Actions', nil, 'main')
+            MenuSystem.createMenu('server', 'Server Option', 'Server Actions', nil, 'main')
+            MenuSystem.createMenu('misc', 'Misc Option', 'Misc Actions', nil, 'main')
+            MenuSystem.createMenu('setting', 'Menu Setting', 'Menu Settings', nil, 'main')
         end
-        
-        -- Example menu opening (F5 key)
-        if MenuSystem.natives.isDisabledControlPressed(0, Keys['CAPS']) then
-            if MenuSystem.isMenuOpened('main') then
-                MenuSystem.closeMenu()
-            else
-                MenuSystem.openMenu('main')
-            end
-        end
-        
-        -- Example menu content
+
+        -- 2. Main menu options (opens submenus)
         if MenuSystem.isMenuOpened('main') then
-            if MenuSystem.button('Test Button', 'Example') then
-                -- Button pressed logic here
-                print('Test button pressed!')
+            if MenuSystem.button('Player Option') then MenuSystem.openMenu('player') end
+            if MenuSystem.button('World Option') then MenuSystem.openMenu('world') end
+            if MenuSystem.button('Weapon Option') then MenuSystem.openMenu('weapon') end
+            if MenuSystem.button('Vehicle Option') then MenuSystem.openMenu('vehicle') end
+            if MenuSystem.button('Teleport Option') then MenuSystem.openMenu('teleport') end
+            if MenuSystem.button('Server Option') then MenuSystem.openMenu('server') end
+            if MenuSystem.button('Misc Option') then MenuSystem.openMenu('misc') end
+            if MenuSystem.button('Menu Setting') then MenuSystem.openMenu('setting') end
+            if MenuSystem.button('Close Menu') then MenuSystem.closeMenu() end
+        end
+
+        -- 3. Submenu: Player Option
+        if MenuSystem.isMenuOpened('player') then
+            if MenuSystem.button('Invincible Player') then
+                -- Your code for Invincible Player
             end
-            
-            if MenuSystem.button('Close Menu', nil) then
+            if MenuSystem.button('Godmode') then
+                -- Your code for Godmode
+            end
+        end
+
+        -- 4. Submenu: World Option
+        if MenuSystem.isMenuOpened('world') then
+            if MenuSystem.button('Day Time Set') then
+                -- Your code for setting day time
+            end
+        end
+
+        -- 5. Submenu: Weapon Option
+        if MenuSystem.isMenuOpened('weapon') then
+            if MenuSystem.button('GetAllWeapon') then
+                -- Your code for giving all weapons
+            end
+            if MenuSystem.button('Infinity Ammo') then
+                -- Your code for infinite ammo
+            end
+        end
+
+        -- 6. Submenu: Vehicle Option
+        if MenuSystem.isMenuOpened('vehicle') then
+            if MenuSystem.button('Fix Vehicle') then
+                -- Your code for fixing vehicle
+            end
+            if MenuSystem.button('Invisible Vehicle') then
+                -- Your code for invisible vehicle
+            end
+        end
+
+        -- 7. Submenu: Teleport Option
+        if MenuSystem.isMenuOpened('teleport') then
+            if MenuSystem.button('Teleport To Way Point') then
+                local blip = GetFirstBlipInfoId(8) -- 8 is the waypoint blip type
+                if DoesBlipExist(blip) then
+                    local coords = GetBlipInfoIdCoord(blip)
+                    -- Try to get safe ground z for the teleport
+                    local foundGround, groundZ = GetGroundZFor_3dCoord(coords.x, coords.y, 1000.0, 0)
+                    local targetZ = foundGround and (groundZ + 1.0) or coords.z
+
+                    stealthTeleport(coords.x, coords.y, targetZ, 2) -- you can change 2 to your desired random offset
+                    ShowNotification("Teleported stealthily to waypoint.")
+                else
+                    ShowNotification("~r~No waypoint set!")
+                end
+            end
+        end
+
+        -- 8. Submenu: Server Option
+        if MenuSystem.isMenuOpened('server') then
+            if MenuSystem.button('trigerServer') then
+                -- Your code for triggering server event
+            end
+        end
+
+        -- 9. Submenu: Misc Option
+        if MenuSystem.isMenuOpened('misc') then
+            if MenuSystem.button('crash player') then
+                -- Your code for crashing player
+            end
+        end
+
+        -- 10. Submenu: Menu Setting
+        if MenuSystem.isMenuOpened('setting') then
+            if MenuSystem.button('change key bind') then
+                -- Your code for changing key bind
+            end
+            if MenuSystem.button('setting position') then
+                -- Your code for setting menu position
+            end
+            if MenuSystem.button('kill Menu') then
                 MenuSystem.closeMenu()
             end
         end
